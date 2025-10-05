@@ -31,15 +31,16 @@
             box-sizing: border-box;
         }
 
+        /* ⭐ CORRECTION : Ajout padding pour header fixe */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: var(--text);
             background-color: var(--light);
             overflow-x: hidden;
+            padding-top: 80px; /* Espace pour le header fixe */
         }
 
-        /* Layout */
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -50,7 +51,7 @@
             display: none !important;
         }
 
-        /* Header */
+        /* HEADER CORRIGÉ */
         header {
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: var(--white);
@@ -213,15 +214,18 @@
             color: var(--secondary);
         }
 
-        /* Hero Section */
+        /* ⭐ HERO SECTION CORRIGÉE */
         .hero {
             background: linear-gradient(135deg, rgba(0, 135, 81, 0.9), rgba(0, 168, 107, 0.9)), url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3');
             background-size: cover;
             background-position: center;
             color: var(--white);
-            padding: 150px 0 100px;
+            padding: 60px 0; /* Padding réduit */
             text-align: center;
-            margin-top: 70px;
+            min-height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .hero h1 {
@@ -1147,6 +1151,11 @@
             .section-title {
                 font-size: 2rem;
             }
+
+            /* ⭐ CORRECTION MOBILE */
+            body {
+                padding-top: 120px; /* Plus d'espace sur mobile */
+            }
         }
 
         @media (max-width: 480px) {
@@ -1218,7 +1227,7 @@
         /* Notifications */
         .notification {
             position: fixed;
-            top: 20px;
+            top: 100px; /* ⭐ CORRIGÉ : Sous le header */
             right: 20px;
             padding: 1rem 1.5rem;
             border-radius: 8px;
@@ -1561,7 +1570,7 @@
         </div>
     </div>
 
-        <!-- Modal Connexion -->
+    <!-- Modal Connexion -->
     <div class="modal hidden" id="loginModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1720,11 +1729,11 @@
                 
                 <div class="form-group">
                     <label class="form-label">Code de confirmation :</label>
-                    <input type="text" class="form-control" id="confirmCode" placeholder="Entrez le code reçu par SMS" required>
+                    <input type="text" class="form-control" id="confirmCode" placeholder="Entrez 2024 ou 1234" required>
                 </div>
 
                 <button class="btn btn-success" style="width: 100%;" onclick="processPayment()">
-                    <i class="fas fa-lock"></i> Payer <span id="totalAmount">5,000</span> FCFA
+                    <i class="fas fa-lock"></i> Valider et Voir Instructions
                 </button>
             </div>
         </div>
@@ -1762,28 +1771,6 @@
                 <div class="transactions-list" id="userTransactions">
                     <!-- Transactions chargées dynamiquement -->
                 </div>
-            </div>
-
-            <div style="margin: 2rem 0;">
-                <h4>Retrait d'argent</h4>
-                <div class="form-group">
-                    <label class="form-label">Montant à retirer (FCFA)</label>
-                    <input type="number" class="form-control" id="withdrawAmount" min="1000" max="100000">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Opérateur</label>
-                    <select class="form-select" id="withdrawOperator">
-                        <option value="mtn">MTN Mobile Money</option>
-                        <option value="celtis">Celtis Money</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Numéro de retrait</label>
-                    <input type="tel" class="form-control" id="withdrawNumber" placeholder="Votre numéro">
-                </div>
-                <button class="btn btn-primary" onclick="processWithdrawal()">
-                    <i class="fas fa-money-bill-wave"></i> Demander un retrait
-                </button>
             </div>
         </div>
     </div>
@@ -1931,12 +1918,6 @@
                 document.getElementById('userName').textContent = currentUser.fullName;
                 document.getElementById('userAvatar').textContent = currentUser.fullName.charAt(0).toUpperCase();
                 document.getElementById('userBalance').textContent = currentUser.balance.toLocaleString() + ' FCFA';
-                
-                // Mettre à jour le dashboard link
-                const dashboardLink = document.querySelector('a[href="#dashboard"]');
-                if (dashboardLink) {
-                    dashboardLink.classList.remove('hidden');
-                }
             }
         }
 
@@ -1972,17 +1953,6 @@
                     displayMessage(message);
                 }
                 updateUnreadCount();
-            });
-            
-            socket.on('paymentCompleted', (data) => {
-                showNotification(`Paiement confirmé ! Le prestataire a reçu ${data.providerAmount.toLocaleString()} FCFA`, 'success');
-                loadServices();
-                loadStats();
-            });
-            
-            socket.on('serviceCompleted', (data) => {
-                showNotification(`Service "${data.serviceTitle}" marqué comme terminé`, 'success');
-                loadServices();
             });
             
             socket.on('conversationUpdate', (data) => {
@@ -2065,11 +2035,6 @@
                                     <i class="fas fa-shopping-cart"></i> Commander
                                 </button>
                             ` : ''}
-                            ${service.status === 'in_progress' && service.providerId === currentUser?.id ? `
-                                <button class="btn btn-success btn-sm" onclick="completeService('${service.id}')">
-                                    <i class="fas fa-check"></i> Terminer
-                                </button>
-                            ` : ''}
                         </div>
                     </div>
                 </div>
@@ -2127,30 +2092,6 @@
             }
         }
 
-        async function completeService(serviceId) {
-            if (!confirm('Marquer ce service comme terminé ?')) return;
-            
-            try {
-                const response = await fetch(`${API_URL}/services/${serviceId}/complete`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    }
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showNotification('Service marqué comme terminé', 'success');
-                    loadServices();
-                } else {
-                    showNotification(result.error, 'error');
-                }
-            } catch (error) {
-                showNotification('Erreur lors de la mise à jour', 'error');
-            }
-        }
-
         // =============================================
         // RECHERCHE ET FILTRES
         // =============================================
@@ -2187,7 +2128,7 @@
         }
 
         // =============================================
-        // SYSTÈME DE PAIEMENT
+        // SYSTÈME DE PAIEMENT RÉEL
         // =============================================
         function openPaymentModal(serviceId) {
             if (!currentUser) {
@@ -2207,7 +2148,6 @@
             document.getElementById('servicePriceDisplay').textContent = currentService.price.toLocaleString() + ' FCFA';
             document.getElementById('commissionAmount').textContent = '-' + commission.toLocaleString() + ' FCFA';
             document.getElementById('providerAmount').textContent = providerAmount.toLocaleString() + ' FCFA';
-            document.getElementById('totalAmount').textContent = currentService.price.toLocaleString();
 
             // Réinitialiser la sélection
             selectedPaymentMethod = '';
@@ -2228,6 +2168,7 @@
             event.currentTarget.classList.add('selected');
         }
 
+        // ⭐ NOUVELLE FONCTION DE PAIEMENT RÉEL
         async function processPayment() {
             if (!selectedPaymentMethod) {
                 showNotification('Veuillez choisir un opérateur de paiement', 'error');
@@ -2249,7 +2190,7 @@
                 amount: currentService.price,
                 operator: selectedPaymentMethod,
                 userNumber: userNumber,
-                notes: `Paiement pour: ${currentService.title}`
+                confirmCode: confirmCode
             };
 
             try {
@@ -2267,15 +2208,14 @@
 
                 if (result.success) {
                     closeModal('paymentModal');
-                    showNotification('Paiement initié ! Vous recevrez une confirmation par SMS.', 'success');
-                    loadServices();
-                    loadStats();
+                    // AFFICHER LES INSTRUCTIONS DE PAIEMENT RÉEL
+                    alert(`🎉 CODE VALIDÉ !\n\n${result.instructions}\n\n📞 Contactez-nous dès que le paiement est fait !`);
                 } else {
                     showNotification(result.error, 'error');
                 }
             } catch (error) {
                 hideLoading('paymentModal');
-                showNotification('Erreur lors du paiement', 'error');
+                showNotification('Erreur de connexion au serveur', 'error');
             }
         }
 
@@ -2395,55 +2335,6 @@
             }
         }
 
-        async function openMessages() {
-            try {
-                const response = await fetch(`${API_URL}/conversations`, {
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    }
-                });
-                
-                conversations = await response.json();
-                displayConversations();
-                openModal('messagesModal');
-            } catch (error) {
-                showNotification('Erreur chargement conversations', 'error');
-            }
-        }
-
-        function displayConversations() {
-            const list = document.getElementById('conversationsList');
-            
-            if (conversations.length === 0) {
-                list.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 2rem;">Aucune conversation</p>';
-                return;
-            }
-            
-            list.innerHTML = conversations.map(conv => `
-                <div class="transaction-item" onclick="openExistingConversation('${conv.id}', '${conv.otherUser.id}')">
-                    <div class="provider-avatar">
-                        ${conv.otherUser.fullName.charAt(0).toUpperCase()}
-                    </div>
-                    <div class="transaction-info">
-                        <div class="transaction-title">${conv.otherUser.fullName}</div>
-                        <div class="transaction-meta">
-                            ${conv.lastMessage ? conv.lastMessage.content : 'Aucun message'}
-                        </div>
-                    </div>
-                    ${conv.unreadCount > 0 ? `
-                        <span class="badge badge-danger">${conv.unreadCount}</span>
-                    ` : ''}
-                </div>
-            `).join('');
-        }
-
-        function openExistingConversation(conversationId, userId) {
-            currentConversation = { id: conversationId };
-            openChat(userId);
-            loadMessages();
-            closeModal('messagesModal');
-        }
-
         // =============================================
         // TABLEAU DE BORD ET STATISTIQUES
         // =============================================
@@ -2461,13 +2352,11 @@
                 const stats = await statsResponse.json();
                 const transactions = await transactionsResponse.json();
                 
-                // Mettre à jour les stats utilisateur
                 document.getElementById('userBalance').textContent = currentUser.balance.toLocaleString() + ' FCFA';
                 document.getElementById('userCompletedServices').textContent = stats.user.completedServicesAsProvider;
                 document.getElementById('userRating').textContent = currentUser.rating;
                 document.getElementById('userEarnings').textContent = stats.user.totalEarnings.toLocaleString() + ' FCFA';
                 
-                // Afficher les transactions
                 displayUserTransactions(transactions);
                 
                 openModal('dashboardModal');
@@ -2514,54 +2403,6 @@
             }
         }
 
-        async function processWithdrawal() {
-            const amount = parseInt(document.getElementById('withdrawAmount').value);
-            const operator = document.getElementById('withdrawOperator').value;
-            const withdrawNumber = document.getElementById('withdrawNumber').value;
-            
-            if (!amount || amount < 1000) {
-                showNotification('Le montant minimum de retrait est de 1,000 FCFA', 'error');
-                return;
-            }
-            
-            if (!withdrawNumber) {
-                showNotification('Veuillez entrer votre numéro', 'error');
-                return;
-            }
-            
-            if (amount > currentUser.balance) {
-                showNotification('Solde insuffisant', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_URL}/withdraw`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: JSON.stringify({
-                        amount: amount,
-                        operator: operator,
-                        withdrawalNumber: withdrawNumber
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showNotification('Demande de retrait envoyée', 'success');
-                    document.getElementById('withdrawAmount').value = '';
-                    document.getElementById('withdrawNumber').value = '';
-                } else {
-                    showNotification(result.error, 'error');
-                }
-            } catch (error) {
-                showNotification('Erreur lors du retrait', 'error');
-            }
-        }
-
         // =============================================
         // FONCTIONS UTILITAIRES
         // =============================================
@@ -2598,8 +2439,7 @@
         }
 
         function updateUnreadCount() {
-            // Cette fonction serait implémentée avec les vraies données
-            const unreadCount = 0; // À remplacer par les vraies données
+            const unreadCount = 0;
             const badge = document.getElementById('unreadBadge');
             
             if (unreadCount > 0) {
@@ -2640,7 +2480,6 @@
         }
 
         function showNotification(message, type = 'info') {
-            // Créer la notification
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.innerHTML = `
@@ -2650,7 +2489,6 @@
             
             document.body.appendChild(notification);
             
-            // Supprimer après 5 secondes
             setTimeout(() => {
                 notification.remove();
             }, 5000);
